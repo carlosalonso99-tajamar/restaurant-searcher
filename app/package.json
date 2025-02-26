@@ -1,0 +1,16 @@
+{
+    "name": "restaurant-search-client",
+    "version": "1.0.0",
+    "scripts": {
+        "build:css": "postcss css/styles.css -o css/tailwind.css",
+        "watch:css": "postcss css/styles.css -o css/tailwind.css --watch"
+    },
+    "devDependencies": {
+        "autoprefixer": "^10.4.0",
+        "postcss": "^8.4.0",
+        "tailwindcss": "^3.0.0"
+    },
+    "dependencies": {
+        "@azure/search-documents": "^12.1.0"
+    }
+}
