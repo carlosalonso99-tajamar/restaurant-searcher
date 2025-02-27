@@ -44,11 +44,11 @@ def search_query(search_text, filter_by=None, sort_order=None):
             filter=filter_by,
             order_by=sort_order,
             facets=['metadata_author'],
-            # Cambiado: pasar una cadena con los campos separados por comas
             highlight_fields="merged_content,imageCaption",
-            select="url,metadata_storage_name,metadata_author,metadata_storage_size,metadata_storage_last_modified,language,sentiment,merged_content,keyphrases,locations,imageTags,imageCaption"
+            select="url,metadata_storage_name,metadata_author,metadata_storage_size,metadata_storage_last_modified,language,sentiment,merged_content,keyphrases,locations,imageTags,imageCaption,platos,ubicacion,tipologia,tipo_menu,precio,puntuacion"
         )
-        print(results)
+
+        print("Respuesta:", results)
         logging.debug("Consulta enviada, obteniendo resultados...")
         return results
 
@@ -66,23 +66,41 @@ def home():
 @app.route("/search", methods=['GET'])
 def search():
     try:
-        # Obtener los términos de búsqueda del formulario
         search_text = request.args.get("search", "").strip()
         if not search_text:
             return redirect(url_for("home"))
         logging.debug(f"Términos de búsqueda recibidos: '{search_text}'")
 
-        # Si se seleccionó un facet, lo usamos en el filtro
-        filter_expression = None
+        # Construir filtros basados en controles adicionales
+        filters = []
+        
+        # Facet de autor
         facet = request.args.get("facet")
         if facet:
-            filter_expression = f"metadata_author eq '{facet}'"
-            logging.debug(f"Usando filtro de facet: {filter_expression}")
+            filters.append(f"metadata_author eq '{facet}'")
+        
+        # Filtro de puntuación mínima (puntuacion es numérico)
+        puntuacion_min = request.args.get("puntuacion")
+        if puntuacion_min:
+            filters.append(f"puntuacion ge {puntuacion_min}")
 
-        # Configurar el orden de la consulta
-        sort_expression = 'search.score()'
+        # Filtro de precio máximo (asumiendo que precio es numérico o se ha normalizado)
+        precio_max = request.args.get("precio")
+        if precio_max:
+            filters.append(f"precio le {precio_max}")
+
+        # Filtro de tipología
+        tipologia = request.args.get("tipologia")
+        if tipologia:
+            filters.append(f"tipologia eq '{tipologia}'")
+        
+        # Combinar filtros con 'and'
+        filter_expression = " and ".join(filters) if filters else None
+        logging.debug(f"Filtro aplicado: {filter_expression}")
+
+        # Orden
         sort_field = request.args.get("sort", "relevance")
-        logging.debug(f"Campo de orden recibido: {sort_field}")
+        sort_expression = 'search.score()'
         if sort_field == 'file_name':
             sort_expression = 'metadata_storage_name asc'
         elif sort_field == 'size':
@@ -91,16 +109,16 @@ def search():
             sort_expression = 'metadata_storage_last_modified desc'
         elif sort_field == 'sentiment':
             sort_expression = 'sentiment desc'
-        logging.debug(f"Orden de la consulta configurado: {sort_expression}")
+        logging.debug(f"Orden configurado: {sort_expression}")
 
-        # Realiza la consulta y obtiene los resultados
         results = search_query(search_text, filter_expression, sort_expression)
         logging.info("Consulta realizada exitosamente. Renderizando resultados...")
         return render_template("search.html", search_results=results, search_terms=search_text)
-
+    
     except Exception as error:
         logging.exception("Error durante el procesamiento de la búsqueda")
         return render_template("error.html", error_message=error)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

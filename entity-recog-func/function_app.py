@@ -4,26 +4,36 @@ import logging
 import azure.functions as func
 from pydantic import BaseModel
 from typing import List
+from enum import Enum
 from openai import OpenAI
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
-
 # Configuración del cliente OpenAI usando la nueva interfaz
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Enum para la tipología
+class TipologiaEnum(str, Enum):
+    Italiana = "Italiana"
+    Asiatica = "Asiatica"
+    India = "India"
+    Casera = "Casera"
+    Tradicional = "Tradicional"
 
 # Modelo para cada plato, con nombre y puntuación
 class Dish(BaseModel):
     nombre: str
     puntuacion: float
 
-# Modelo de datos para parsear la respuesta de OpenAI
+# Modelo de datos para parsear la respuesta de OpenAI,
+# con tipologia como enum y precio como float (double)
 class MenuEntities(BaseModel):
+    restaurante: str
     platos: List[Dish]
     ubicacion: str
-    tipologia: str
+    tipologia: TipologiaEnum
     tipo_menu: str
-    precio: str
+    precio: float
     puntuacion: float  # Puntuación general del restaurante
 
 MODEL = "gpt-4o-mini"  # Ajusta el modelo según tus necesidades
@@ -63,30 +73,33 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
                 "recordId": record_id,
                 "data": {
                     "entities": {
+                        "restaurante": "Desconocido",
                         "platos": [],
                         "ubicacion": "Desconocida",
-                        "tipologia": "Desconocida",
+                        "tipologia": "Tradicional",
                         "tipo_menu": "sin restricciones",
-                        "precio": "No especificado",
+                        "precio": 0.0,
                         "puntuacion": 0.0
                     }
                 }
             })
             continue
 
-        # Se incluye en el prompt la solicitud de los nuevos campos "puntuacion" tanto para el restaurante como para cada plato
+        # Prompt actualizado: se solicita que "tipologia" sea uno de los siguientes:
+        # Italiana, Asiatica, India, Casera o Tradicional, y que "precio" sea un valor numérico (double).
         prompt = (
             "Eres un asistente experto en extraer información de menús de restaurantes. "
             "Dado el siguiente texto extraído de un menú, extrae la siguiente información en formato JSON con la siguiente estructura:\n\n"
             "{\n"
+            '  "restaurante": "nombre del restaurante",\n'
             '  "platos": [\n'
             '    { "nombre": "nombre del plato", "puntuacion": puntuación numérica del plato },\n'
             '    ...\n'
             '  ],\n'
             '  "ubicacion": "ubicación del restaurante",\n'
-            '  "tipologia": "tipo o categoría del restaurante",\n'
-            '  "tipo_menu": "tipo de menú (ej. sin restricciones, celiaco, vegetariano, vegano)",\n'
-            '  "precio": "rango o precio aproximado",\n'
+            '  "tipologia": "tipo o categoría del restaurante (Italiana, Asiatica, India, Casera, Tradicional)",\n'
+            '  "tipo_menu": "tipo de menú (ej. sin restricciones, celíaco, vegetariano, vegano)",\n'
+            '  "precio": precio numérico aproximado,\n'
             '  "puntuacion": puntuación numérica general del restaurante\n'
             "}\n\n"
             "Si falta algún dato, inventa un valor plausible. Asegúrate de devolver un JSON válido.\n\n"
@@ -111,11 +124,12 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
         except Exception as e:
             logging.error(f"Error llamando a OpenAI: {e}")
             entities = {
+                "restaurante": "Desconocido",
                 "platos": [],
                 "ubicacion": "Desconocida",
-                "tipologia": "Desconocida",
+                "tipologia": "Tradicional",
                 "tipo_menu": "sin restricciones",
-                "precio": "No especificado",
+                "precio": 0.0,
                 "puntuacion": 0.0
             }
 
@@ -131,3 +145,13 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
         status_code=200,
         mimetype="application/json"
     )
+
+
+@app.event_grid_trigger(arg_name="azeventgrid")
+def EventGridTrigger(azeventgrid: func.EventGridEvent):
+    logging.info('Python EventGrid trigger processed an event')
+
+
+@app.event_grid_trigger(arg_name="azeventgrid")
+def EventGridTrigger(azeventgrid: func.EventGridEvent):
+    logging.info('Python EventGrid trigger processed an event')
