@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import List
 from enum import Enum
 from openai import OpenAI
+import requests
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
@@ -149,9 +150,48 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.event_grid_trigger(arg_name="azeventgrid")
 def EventGridTrigger(azeventgrid: func.EventGridEvent):
-    logging.info('Python EventGrid trigger processed an event')
+    """
+    Función que se activa cuando se crea un nuevo blob en el Storage Account.
+    Simplemente ejecuta el indexador para procesar los nuevos archivos.
+    
+    Este trigger se activará con eventos de Azure Event Grid cuando
+    se suba un nuevo archivo al contenedor de Storage.
+    """
+    try:
+        logging.info(f'Evento recibido: {azeventgrid.event_type}')
+        
+        # Verificar que sea un evento de creación de blob
+        if azeventgrid.event_type != "Microsoft.Storage.BlobCreated":
+            logging.info(f"Ignorando evento de tipo: {azeventgrid.event_type}")
+            return
+            
+        # Obtener información del indexador
+        search_service = os.getenv("SEARCH_SERVICE_NAME")
+        search_admin_key = os.getenv("SEARCH_SERVICE_ADMIN_KEY")
+        indexer_name = os.getenv("SEARCH_INDEXER_NAME")
+        
+        if not all([search_service, search_admin_key, indexer_name]):
+            logging.error("Faltan variables de entorno para Azure Search")
+            return
+        
+        # Ejecutar el indexador usando la API REST de Azure Search
+        indexer_url = f"https://{search_service}.search.windows.net/indexers/{indexer_name}/run?api-version=2020-06-30"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": search_admin_key
+        }
+        
+        # Hacer la solicitud para ejecutar el indexador
+        response = requests.post(indexer_url, headers=headers)
+        
+        if response.status_code in [200, 201, 202, 204]:
+            logging.info(f"Indexador {indexer_name} ejecutado correctamente")
+        else:
+            logging.error(f"Error al ejecutar el indexador: {response.status_code}")
+            logging.error(f"Detalles: {response.text}")
+            
+    except Exception as e:
+        logging.exception(f"Error en EventGridTrigger: {str(e)}")
 
 
-@app.event_grid_trigger(arg_name="azeventgrid")
-def EventGridTrigger(azeventgrid: func.EventGridEvent):
-    logging.info('Python EventGrid trigger processed an event')
