@@ -39,7 +39,7 @@ if not storage_connection_string:
     logging.error("Falta variable de entorno: STORAGE_CONNECTION_STRING")
 
 # Configuración para la carga de archivos
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'webp'}
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -229,8 +229,6 @@ def upload_file():
                 content_type = 'image/jpeg'
             elif blob_path.lower().endswith('.png'):
                 content_type = 'image/png'
-            elif blob_path.lower().endswith('.webp'):
-                content_type = 'image/webp'
             
             # Subir el archivo a Azure Blob Storage
             blob_client = container_client.get_blob_client(blob_path)

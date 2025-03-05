@@ -62,7 +62,7 @@ export default function AdminPage() {
             <div className="p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-6">Sube nuevos menús de restaurantes</h2>
               <p className="text-gray-600 mb-8">
-                Selecciona un archivo de menú para subir. Formatos admitidos: PDF, JPG, PNG y WEBP.
+                Selecciona un archivo de menú para subir. Formatos admitidos: PDF, JPG, PNG.
                 Los menús se procesarán automáticamente para extraer la información relevante.
               </p>
               <UploadForm />
