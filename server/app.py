@@ -39,7 +39,7 @@ if not storage_connection_string:
     logging.error("Falta variable de entorno: STORAGE_CONNECTION_STRING")
 
 # Configuración para la carga de archivos
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'webp'}
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
 
 def allowed_file(filename):
     return '.' in filename and \
