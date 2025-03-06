@@ -229,8 +229,6 @@ def upload_file():
                 content_type = 'image/jpeg'
             elif blob_path.lower().endswith('.png'):
                 content_type = 'image/png'
-            elif blob_path.lower().endswith('.webp'):
-                content_type = 'image/webp'
             
             # Subir el archivo a Azure Blob Storage
             blob_client = container_client.get_blob_client(blob_path)
